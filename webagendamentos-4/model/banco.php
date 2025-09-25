@@ -1,134 +1,97 @@
 <?php
-//timezone
+// webagendamentos-4/banco.php
 date_default_timezone_set('America/Sao_Paulo');
 
-// conexão com o banco de dados
 define('BD_SERVIDOR','localhost');
 define('BD_USUARIO','root');
 define('BD_SENHA','');
 define('BD_BANCO','projetoweb');
-    
-class Banco{
 
-    protected $mysqli;
-    private $cadastro;
+class Banco {
+    private $pdo;
 
     public function __construct(){
         $this->conexao();
     }
 
     private function conexao(){
-        $this->mysqli = new mysqli(BD_SERVIDOR, BD_USUARIO , BD_SENHA, BD_BANCO);
-    }
-
-    // Métodos para Agendamentos
-    public function setAgendamentos($nome,$telefone,$origem,$data_contato,$observacao){
-        $stmt = $this->mysqli->prepare("INSERT INTO agendamentos (`nome`, `telefone`, `origem`, `data_contato`, `observacao`) VALUES (?,?,?,?,?);");
-        $stmt->bind_param("sssss",$nome,$telefone,$origem,$data_contato,$observacao);
-        if( $stmt->execute() == TRUE){
-            return true ;
-        }else{
-            return false;
+        try {
+            $dsn = "mysql:host=" . BD_SERVIDOR . ";dbname=" . BD_BANCO . ";charset=utf8mb4";
+            $this->pdo = new PDO($dsn, BD_USUARIO, BD_SENHA, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+        } catch (PDOException $e) {
+            die("Erro conexão DB: " . $e->getMessage());
         }
     }
 
-    public function getAgendamentos($id) {
-        try {
-            if(isset($id) && $id > 0){
-                $stmt = $this->mysqli->query("SELECT * FROM agendamentos WHERE id = '" . $id . "';");
-            }else{
-                $stmt = $this->mysqli->query("SELECT * FROM agendamentos;");
-            }
-            
-            $lista = $stmt->fetch_all(MYSQLI_ASSOC);
-            $f_lista = array();
-            $i = 0;
-            foreach ($lista as $l) {
-                $f_lista[$i]['id'] = $l['id'];
-                $f_lista[$i]['nome'] = $l['nome'];
-                $f_lista[$i]['telefone'] = $l['telefone'];
-                $f_lista[$i]['origem'] = $l['origem'];
-                $f_lista[$i]['data_contato'] = $l['data_contato'];
-                $f_lista[$i]['observacao'] = $l['observacao'];
-                $i++;
-            }
-            return $f_lista;
-        } catch (Exception $e) {
-            echo "Ocorreu um erro ao tentar Buscar Todos." . $e;
+    // expõe conexão para models que usam PDO
+    public function getConnection(){
+        return $this->pdo;
+    }
+
+    /* --- Métodos legados que o sistema usava (opcionais mas úteis)
+       você pode manter estes para compatibilidade com código que chama:
+       setAgendamentos, getAgendamentos, setLicoes, getLicoes, update..., delete...
+    */
+
+    // Agendamentos
+    public function setAgendamentos($nome,$telefone,$origem,$data_contato,$observacao){
+        $sql = "INSERT INTO agendamentos (`nome`,`telefone`,`origem`,`data_contato`,`observacao`) VALUES (?,?,?,?,?)";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([$nome,$telefone,$origem,$data_contato,$observacao]);
+    }
+
+    public function getAgendamentos($id = 0){
+        if($id && $id > 0){
+            $stmt = $this->pdo->prepare("SELECT * FROM agendamentos WHERE id = ?");
+            $stmt->execute([$id]);
+            return $stmt->fetchAll();
+        }else{
+            $stmt = $this->pdo->query("SELECT * FROM agendamentos");
+            return $stmt->fetchAll();
         }
     }
 
     public function updateAgendamentos($id,$nome,$telefone,$origem,$data_contato,$observacao){
-       $stmt = $this->mysqli->query("UPDATE agendamentos SET `nome` = '" . $nome . "', `telefone` =  '" . $telefone . "', `origem` =  '" . $origem . "', `data_contato` =  '" . $data_contato . "', `observacao` =   '" . $observacao . "' WHERE `id` =  '" . $id . "';");
-        if( $stmt > 0){
-            return true ;
-        }else{
-            return false;
-        }
+        $sql = "UPDATE agendamentos SET nome=?, telefone=?, origem=?, data_contato=?, observacao=? WHERE id=?";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([$nome,$telefone,$origem,$data_contato,$observacao,$id]);
     }
 
     public function deleteAgendamentos($id){
-        $stmt = $this->mysqli->query("DELETE FROM agendamentos WHERE `id` =  '" . $id . "';");
-        if( $stmt > 0){
-            return true ;
-        }else{
-            return false;
-        }
+        $stmt = $this->pdo->prepare("DELETE FROM agendamentos WHERE id = ?");
+        return $stmt->execute([$id]);
     }
 
-    // Métodos para Lições (Licoes)
+    // Licoes
     public function setLicoes($titulo, $descricao, $tipo, $arquivo, $nivel){
-        $stmt = $this->mysqli->prepare("INSERT INTO licoes (`titulo`, `descricao`, `tipo`, `arquivo`, `nivel`) VALUES (?,?,?,?,?);");
-        $stmt->bind_param("sssss", $titulo, $descricao, $tipo, $arquivo, $nivel);
-        if($stmt->execute() == TRUE){
-            return true;
-        }else{
-            return false;
-        }
+        $sql = "INSERT INTO licoes (titulo, descricao, tipo, arquivo, nivel) VALUES (?,?,?,?,?)";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([$titulo, $descricao, $tipo, $arquivo, $nivel]);
     }
 
-    public function getLicoes($id) {
-        try {
-            if(isset($id) && $id > 0){
-                $stmt = $this->mysqli->query("SELECT * FROM licoes WHERE id = '" . $id . "';");
-            }else{
-                $stmt = $this->mysqli->query("SELECT * FROM licoes;");
-            }
-            
-            $lista = $stmt->fetch_all(MYSQLI_ASSOC);
-            $f_lista = array();
-            $i = 0;
-            foreach ($lista as $l) {
-                $f_lista[$i]['id'] = $l['id'];
-                $f_lista[$i]['titulo'] = $l['titulo'];
-                $f_lista[$i]['descricao'] = $l['descricao'];
-                $f_lista[$i]['tipo'] = $l['tipo'];
-                $f_lista[$i]['arquivo'] = $l['arquivo'];
-                $f_lista[$i]['nivel'] = $l['nivel'];
-                $i++;
-            }
-            return $f_lista;
-        } catch (Exception $e) {
-            echo "Ocorreu um erro ao tentar Buscar Todas as Lições." . $e;
+    public function getLicoes($id = 0){
+        if($id && $id > 0){
+            $stmt = $this->pdo->prepare("SELECT * FROM licoes WHERE id = ?");
+            $stmt->execute([$id]);
+            return $stmt->fetchAll();
+        }else{
+            $stmt = $this->pdo->query("SELECT * FROM licoes");
+            return $stmt->fetchAll();
         }
     }
 
     public function updateLicoes($id, $titulo, $descricao, $tipo, $arquivo, $nivel){
-        $stmt = $this->mysqli->query("UPDATE licoes SET `titulo` = '" . $titulo . "', `descricao` = '" . $descricao . "', `tipo` = '" . $tipo . "', `arquivo` = '" . $arquivo . "', `nivel` = '" . $nivel . "' WHERE `id` = '" . $id . "';");
-        if($stmt > 0){
-            return true;
-        }else{
-            return false;
-        }
+        $sql = "UPDATE licoes SET titulo=?, descricao=?, tipo=?, arquivo=?, nivel=? WHERE id=?";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([$titulo,$descricao,$tipo,$arquivo,$nivel,$id]);
     }
 
     public function deleteLicoes($id){
-        $stmt = $this->mysqli->query("DELETE FROM licoes WHERE `id` = '" . $id . "';");
-        if($stmt > 0){
-            return true;
-        }else{
-            return false;
-        }
+        $stmt = $this->pdo->prepare("DELETE FROM licoes WHERE id = ?");
+        return $stmt->execute([$id]);
     }
-}    
+}
 ?>

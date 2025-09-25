@@ -1,6 +1,13 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 // trilhas.php - Tracks / Learning paths page
+
+require_once __DIR__ . "/../controller/ControllerTrilhas.php";
+
+
+$controller = new ControllerTrilhas();
+$userId = $_SESSION['user']['id'] ?? null; // ID do usuário logado
+$tracks = $controller->listarTrilhas($userId);
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -156,62 +163,41 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         <h3 class="mb-4 text-center">Trilhas de Aprendizagem</h3>
 
         <div class="timeline p-3 bg-white rounded-3">
-          <?php
-            $tracks = [
-              ['id'=>'A1','label'=>'Beginner A1','activities'=>[
-                ['title'=>'Hello!','meta'=>'Learn greetings for meeting people','img'=>'assets/img/hello.svg'],
-                ['title'=>'Introducing yourself','meta'=>'Say your name','img'=>'assets/img/introduction.svg'],
-                ['title'=>'Ending a conversation','meta'=>'Learn how to end a conversation','img'=>'assets/img/ending-conversation.svg']
-              ]],
-              ['id'=>'A2','label'=>'Beginner A2','activities'=>[
-                ['title'=>'Guided practice','meta'=>'Prática guiada e revisão','img'=>'assets/img/conversa.png'],
-                ['title'=>'Listening drills','meta'=>'Short listening activities','img'=>'assets/img/feature-1.svg']
-              ]],
-              ['id'=>'A3','label'=>'Pre-intermediate A3','activities'=>[
-                ['title'=>'Roleplay','meta'=>'Simulated conversations','img'=>'assets/img/conversation.svg'],
-                ['title'=>'Developing fluency','meta'=>'Talk about what you\'ve been doing','img'=>'assets/img/progress.svg']
-              ]],
-              ['id'=>'A4','label'=>'Intermediate A4','activities'=>[
-                ['title'=>'Presentations','meta'=>'Organize short presentations','img'=>'assets/img/presentation.svg'],
-                ['title'=>'Work emails','meta'=>'Write professional messages','img'=>'assets/img/email.svg']
-              ]]
-            ];
-          ?>
-
-          <?php foreach($tracks as $tidx => $t): ?>
+          <?php foreach($tracks as $t): 
+            $atividades = $controller->listarAtividades($t['id']); ?>
             <div class="timeline-section mb-4" id="track-<?php echo $t['id']; ?>">
               <div class="d-flex justify-content-between align-items-center mb-3">
-                <strong>Track <?php echo htmlentities($t['id']); ?>: <?php echo htmlentities($t['label']); ?></strong>
-                <div class="small text-muted"><?php echo htmlentities($t['label']); ?></div>
+                <strong>Track <?php echo htmlentities($t['id']); ?>: <?php echo htmlentities($t['nome']); ?></strong>
+                <div class="small text-muted"><?= $t['nivel'] ?></div>
               </div>
 
               <div class="card-clean p-3 mb-3">
                 <ul class="list-unstyled mb-0">
-                  <?php foreach($t['activities'] as $idx => $act): ?>
+                  <?php foreach($atividades as $idx => $act): ?>
                     <li class="d-flex align-items-start mb-3 timeline-item">
                       <div class="me-3 timeline-dot flex-shrink-0">
-                        <img src="<?php echo asset($act['img']); ?>" alt="" width="48" class="rounded-circle">
+                        <img src="assets/img/feature-1.svg" alt="" width="48" class="rounded-circle">
                       </div>
                       <div class="flex-grow-1">
                         <div class="d-flex align-items-center justify-content-between">
                           <div>
-                            <div class="fw-semibold"><?php echo htmlentities($act['title']); ?></div>
-                            <div class="small text-muted"><?php echo htmlentities($act['meta']); ?></div>
+                            <div class="fw-semibold"><?php echo htmlentities($act['titulo']); ?></div>
+                            <div class="small text-muted"><?php echo htmlentities($act['descricao']); ?></div>
                           </div>
                           <div class="text-end">
-                            <button class="btn btn-sm btn-outline-secondary trail-activity-btn" data-track="<?php echo $t['id']; ?>" data-idx="<?php echo $idx; ?>">Start <span class="checkmark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+                            <form method="post" action="../../webagendamentos-4/controller/ControllerTrilhas.php?funcao=iniciar">
+                              <input type="hidden" name="id_usuario" value="<?php echo $userId; ?>">
+                              <input type="hidden" name="id_trilha" value="<?php echo $t['id']; ?>">
+                              <input type="hidden" name="id_atividade" value="<?php echo $act['id']; ?>">
+                              <input type="hidden" name="data_inicio" value="<?php echo date('Y-m-d H:i:s'); ?>">
+                              <button type="submit" class="btn btn-sm btn-outline-secondary">Start</button>
+                            </form>
                           </div>
                         </div>
                       </div>
                     </li>
                   <?php endforeach; ?>
                 </ul>
-                <div class="d-flex align-items-center gap-3 mt-2">
-                  <div class="trail-mini-progress flex-grow-1" aria-hidden="true">
-                    <div class="trail-mini-bar" style="width:0%"></div>
-                  </div>
-                  <div class="small text-muted completed-count">0/<?php echo count($t['activities']); ?></div>
-                </div>
               </div>
             </div>
           <?php endforeach; ?>
